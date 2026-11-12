@@ -1,37 +1,49 @@
-# Image Denoising Using SVD
+# Video Compression Using Higher-Order SVD
 
-Removing Gaussian noise from a color image with a truncated SVD.
+Compressing a short video with the Higher-Order SVD (HOSVD). A video is naturally a tensor (frames x height x width), so instead of compressing every frame separately with a matrix SVD, the whole clip is decomposed at once and truncated in all three directions.
 
-The reason this works: a natural image has a lot of structure, so most of it is captured by the first singular values. Random noise has no structure and is spread over all singular values more or less equally. If we keep only the first `k` singular values, we keep most of the image and throw away most of the noise.
+The tensor functions (unfold, fold, mode-n product) are my own NumPy implementation in `All.py`. It is the same file I used in my face recognition project.
 
-## Steps
+## Data
 
-1. Read the image (`pic5.jpeg`, 2736 x 3648 pixels, RGB).
-2. Add Gaussian noise with mean 0 and standard deviation 100 (on the 0 to 255 scale) to every pixel and channel. This is very strong noise.
-3. Compute the SVD of each color channel of the noisy image separately.
-4. Rebuild each channel from the first `k` singular values and vectors, `A_k = U_k S_k V_k^T`, for `k = 50, 100, ..., 500`, and save the result for each `k`.
-5. Plot the singular values of the three channels.
+`original.mp4`: 132 frames, 720 x 1280, RGB. Each color channel is treated as a separate tensor of shape 132 x 720 x 1280.
 
-## What to look for
+## Method
 
-There is a trade-off in `k`:
+For each channel `A`:
 
-- small `k`: the noise is gone but the image is blurry, fine details are lost
-- large `k`: the details come back, but so does the noise
+1. Unfold `A` along the three modes. The unfoldings have shapes 132 x 921600, 720 x 168960 and 1280 x 95040.
+2. Take the SVD of each unfolding and keep the left singular vectors `U1`, `U2`, `U3`.
+3. Compute the core tensor `S = A x1 U1^T x2 U2^T x3 U3^T`.
+4. To compress, keep only the first `r1`, `r2`, `r3` columns of `U1`, `U2`, `U3` and the corner `S[:r1, :r2, :r3]` of the core.
+5. Reconstruct with `A_hat = S_r x1 U1_r x2 U2_r x3 U3_r`, put the three channels back together and write the video.
 
-In the singular value plot there are a few very large singular values at the start and then a long flat part. The flat part is mostly noise, so a good `k` is somewhere around the point where the curve becomes flat. In this notebook the comparison between different `k` is visual, from the saved images.
+`r1` is the rank in the time direction, `r2` and `r3` are the ranks in the height and width directions.
+
+## Settings
+
+I tried three truncations. The table shows how many numbers have to be stored per channel (core + three factor matrices) compared to the original 132 x 720 x 1280 = 121,651,200 values.
+
+| (r1, r2, r3) | Stored values | Percent of original |
+|---|---|---|
+| (20, 100, 200) | 730,640 | 0.6% |
+| (40, 250, 400) | 4,697,280 | 3.9% |
+| (80, 400, 700) | 23,594,560 | 19.4% |
+
+The notebook writes one output video for each setting (`outputvideo_20_100_200.mp4` and so on), so the quality can be compared by eye. The time rank can be cut a lot more than the spatial ranks, because neighboring frames are very similar.
 
 ## Files
 
-- `project-5.ipynb` : the notebook
-- `pic5.jpeg` : the test image
+- `Video_Compression.ipynb` : the notebook
+- `All.py` : `unfold`, `fold`, `Mul_1`, `Mul_2`, `Mul_3`
+- `original.mp4` : input video
 
 ## Requirements
 
-numpy, matplotlib
+numpy, scikit-video (needs ffmpeg installed)
 
-The image is large, so the three SVDs take some time.
+Note that the SVDs of the unfoldings are heavy. The full tensor in float64 is about 1 GB per channel, so this needs a machine with enough RAM.
 
 ## Reference
 
-Lars Eldén, *Matrix Methods in Data Mining and Pattern Recognition*, SIAM.
+Lars Eldén, *Matrix Methods in Data Mining and Pattern Recognition*, SIAM. Chapter on tensor decomposition (HOSVD).
