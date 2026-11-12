@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/34736145/README.md)
 # Image Denoising Using SVD
 
 Removing Gaussian noise from a color image with a truncated SVD.
