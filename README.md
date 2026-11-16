@@ -43,7 +43,3 @@ The notebook writes one output video for each setting (`outputvideo_20_100_200.m
 numpy, scikit-video (needs ffmpeg installed)
 
 Note that the SVDs of the unfoldings are heavy. The full tensor in float64 is about 1 GB per channel, so this needs a machine with enough RAM.
-
-## Reference
-
-Lars Eldén, *Matrix Methods in Data Mining and Pattern Recognition*, SIAM. Chapter on tensor decomposition (HOSVD).
